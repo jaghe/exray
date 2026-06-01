@@ -1,0 +1,31 @@
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - '*'
+
+name: 2-release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        id: del
+        run: |
+          echo "tag=$(git ls-remote --tag --sort=-v:refname https://github.com/${{ github.repository }} | head -1 | cut -f 2 | grep -o "[^/]*$" | sed -e 's/\^{}//g')" > release.txt
+          echo "del=$(git ls-remote --tag --sort=-v:refname https://github.com/${{ github.repository }} | head -1 | cut -f 2 | sed -e 's/\^{}//g')" >> release.txt
+          
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            echo "GIT_TAGNAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          fi
+      
+      - name: GitHub Release
+        uses: crazy-max/ghaction-github-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            release.txt
+          name: ${{ env.GIT_TAGNAME }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
